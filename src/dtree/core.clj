@@ -1,22 +1,21 @@
 (ns dtree.core
   (:require
-    [clojure.java.io :as io]
-    [clojure.string :as str]
+    [clojure.java.io  :as io]
+    [clojure.string   :as str]
     [clojure.data.csv :as csv]
+    ;[net.cgrand.xforms :as x]
     )
   )
 
 (defprotocol DataSet
-  (labels [this])
-  (samples [this]))
+  (samples [this] "Return `Sample` sequence."))
 
 (defprotocol Sample
-  (label [this])
-  (features [this]))
+  (label [this] "Return label of this sample.")
+  (features [this] "Return feature sequence of this sample."))
 
 (defrecord IrisDataSet [samples]
   DataSet
-  (labels [this] (->> this :samples (map label) distinct))
   (samples [this] (:samples this)))
 
 (defrecord IrisSample [coll]
@@ -56,29 +55,71 @@
 ;  ;  )
 ;  )
 
-(defn nth-features [docset feature-index]
-  (->> (samples docset)
+(defn nth-features [samples feature-index]
+  (->> samples
        (map #(nth (features %) feature-index))
        distinct
        sort))
 
+(defn t-values [samples feature-index]
+  (->> (nth-features samples feature-index)
+       (partition 2 1)
+       (map #(/ (apply + %) 2))))
 
-(let [idx 0
-      dataset (iris)
-      xx (partition 2 1 (nth-features dataset idx))
-      t-values (map (fn [x] (/ (apply + x) 2)) xx)
-      ]
-  (map (fn [t-value]
-           (samples dataset)
+(defn- filter-label [samples label*]
+  (filter #(= label* (label %)) samples))
 
-           ) t-values)
-  
+(defn labels [samples]
+  (distinct (map label samples)))
+
+(defn gini* [samples]
+  (transduce 
+    (map #(Math/pow (/ (count (filter-label samples %))
+                       (count samples))
+                    2))
+    + (labels samples)))
+
+(defn gini
+  [samples feature-index t-value]
+  (let [pred (fn [sample] (< (nth (features sample) feature-index) t-value))
+        {left true right false} (group-by pred samples)]
+    (when (and (seq left) (seq right))
+      {:gini (/ (+ (* (count left)  (- 1 (gini* left)))
+                   (* (count right) (- 1 (gini* right))))
+                (count samples))
+       :index feature-index
+       :t-value t-value
+       :left left
+       :right right})))
+
+(defn collect-gini [samples]
+  (mapcat
+    (fn [index]
+        (into [] (comp (map #(gini samples index %))
+                       (remove nil?))
+              (t-values samples index)))
+    (-> samples first features count range)))
+
+(defn build-nodes
+  [& {:keys [samples max-depth min-samples]
+      :or {max-depth 10, min-samples 3} }]
   )
-;
+
+
+;(let [samples (samples (iris))
+;      ]
+;  (apply min-key :gini (collect-gini samples))
+;  )
+
 ;(defn build-nodes
 ;  [& {:keys [n-class samples max-depth min-samples node]
 ;      :or {max-depth 10, min-samples 3}}]
 ;
+;  (apply min-key :gini
+;         (pmap #(assoc (gini docset idx %)
+;                       :index idx
+;                       :t-value %)
+;               (t-values docset idx)))
 ;  (if (>= (:level node) max-depth)
 ;    (set-label node (label (first samples)))
 ;    (map
@@ -95,4 +136,5 @@
 ;        ]
 ;    )
 ;  )
+
 
