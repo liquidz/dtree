@@ -103,6 +103,13 @@
 (defn build-nodes
   [& {:keys [samples max-depth min-samples]
       :or {max-depth 10, min-samples 3} }]
+  (apply min-key :gini (collect-gini samples))
+  ; TODO
+  ; 2分できていなかったら決定木は作らない
+  ;    leaf とする
+  ; ノードに属する最小のサンプル数を下回っている場合も決定木は作らない
+  ;    過学習対策らしい
+  ; ノードを組み立てて、再帰的に子ノードも組み立てる
   )
 
 
