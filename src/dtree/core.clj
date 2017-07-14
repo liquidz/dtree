@@ -24,17 +24,11 @@
        (partition 2 1)
        (map #(/ (apply + %) 2))))
 
-;(defn- filter-label [samples label*]
-;  (filter #(= label* (label %)) samples))
-
-;(defn labels [samples]
-;  (distinct (map label samples)))
-
 (defn gini [samples]
   (let [n-all (count samples)]
-    (transduce
-      (map (fn [[_ n]] (Math/pow (/ n n-all) 2)))
-      + 0 (frequencies (map label samples)))))
+    (- 1 (transduce
+           (map (fn [[_ n]] (Math/pow (/ n n-all) 2)))
+           + 0 (frequencies (map label samples))))))
 
 (defn split-samples
   [samples feature-index threshold]
@@ -139,13 +133,13 @@
   )
 
 
-;(let [samples (samples (iris))
-;      dtree (build-nodes :samples samples :max-depth 20 :min-samples 2)
-;      ]
-;  dtree
-;
-;  #_(frequencies
-;    (map
-;      #(= (label %) (classify dtree (features %)))
-;      (take 20 (shuffle samples))))
-;  )
+(let [samples (samples (iris))
+      dtree (build-nodes :samples samples)
+      ]
+  (println dtree)
+
+  (frequencies
+    (map
+      #(= (label %) (classify dtree (features %)))
+      (take 10 (shuffle samples))))
+  )
