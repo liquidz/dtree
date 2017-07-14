@@ -78,6 +78,7 @@
     (fn 
       ([m] m)
       ([best m]
+       ;(min-key :gini best m)
        (if (< (:gini m) (:gini best))
          m
          best)))
