@@ -1,18 +1,10 @@
 (ns dtree.core
   (:require
-    [dtree.dataset :refer :all]
-    [dtree.dataset.iris :refer :all]
-    [dtree.dataset.dummy :refer :all]
-
-    [clojure.java.io  :as io]
-    [clojure.string   :as str]
-    [net.cgrand.xforms :as x]
-    )
-  )
-
+    ;[net.cgrand.xforms :as x]
+    [dtree.dataset :refer :all]))
 
 (defn nth-features
-  [samples feature-index]
+  [samples ^long feature-index]
   (->> samples
        (map #(nth (features %) feature-index))
        distinct
@@ -32,10 +24,10 @@
 
 (defn split-samples
   [samples feature-index threshold]
-  (let [{a true b false} (group-by #(< (nth (features %) feature-index)
-                                       threshold)
-                                   samples)]
-    [a b]))
+  (let [{t-vec true f-vec false}
+        (group-by #(< (nth (features %) feature-index) threshold) samples)]
+    [t-vec f-vec]))
+
 
 (defn feature-index-threshold-pairs
   [samples]
@@ -66,36 +58,21 @@
   [samples]
   (transduce
     (generate-branch-xform samples)
-    ;(map (fn [[index threshold]]
-    ;       (let [[left right] (split-samples samples index threshold)]
-    ;         {:index index
-    ;          :threshold threshold
-    ;          :gini (/ (+ (* (gini left) (count left))
-    ;                      (* (gini right) (count right)))
-    ;                   (count samples))
-    ;          :left left
-    ;          :right right})))
     (fn 
       ([m] m)
       ([best m]
-       ;(min-key :gini best m)
-       (if (< (:gini m) (:gini best))
-         m
-         best)))
+       (min-key :gini best m)))
     {:gini 1.0}
     (feature-index-threshold-pairs samples)))
 
-(defn- max-if [pred coll]
-  (:x (apply max-key :v (map #(hash-map :v (pred %) :x %) coll))))
-
 (defn build-leaf
   [samples]
-  ;(hash-map :label (-> samples first label))
-  (hash-map :label
-            (first (max-if second (frequencies (map label samples))))
-            )
-  )
-
+  (->> samples
+       (map label)
+       frequencies
+       (apply max-key second)
+       first
+       (hash-map :label)))
 
 (defn build-nodes
   [& {:keys [samples level max-depth min-samples]
@@ -125,22 +102,20 @@
   (loop [node dtree]
     (let [f (some->> node :index (nth feature))]
       (cond
-        (contains? node :label) (:label node)
-        (< f (:threshold node)) (recur (:left node))
-        :else (recur (:right node))
-        )
-      )
-    )
-  )
+        (contains? node :label)
+        (:label node)
 
+        (< (->> node :index (nth feature)) (:threshold node))
+        (recur (:left node))
 
-(let [samples (samples (iris))
-      dtree (build-nodes :samples samples)
-      ]
-  (println dtree)
+        :else
+        (recur (:right node))))))
 
-  (frequencies
-    (map
-      #(= (label %) (classify dtree (features %)))
-      (take 10 (shuffle samples))))
-  )
+(defn accuracy
+  [dtree test-samples]
+  (let [res (frequencies
+              (map #(= (label %) (classify dtree (features %)))
+                   test-samples))]
+    (double (/ (res true)
+               (count test-samples)))))
+
