@@ -1,3 +1,0 @@
-test:
-  override:
-    - lein sub do install, test
