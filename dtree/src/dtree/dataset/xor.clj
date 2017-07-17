@@ -1,8 +1,8 @@
-(ns dtree.dataset.dummy
+(ns dtree.dataset.xor
   (:require
     [dtree.dataset :refer :all]))
 
-(defn dummy
+(defn xor
   []
   (->SimpleDataSet
     [(->SimpleSample [0.0 0.0] 0)

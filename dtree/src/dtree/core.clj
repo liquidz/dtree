@@ -1,6 +1,5 @@
 (ns dtree.core
   (:require
-    ;[net.cgrand.xforms :as x]
     [dtree.dataset :refer :all]))
 
 (defn nth-features
@@ -74,9 +73,9 @@
        first
        (hash-map :label)))
 
-(defn build-nodes
-  [& {:keys [samples level max-depth min-samples]
-      :or   {level 1, max-depth 10, min-samples 3}}]
+(defn build-tree
+  [samples & {:keys [level max-depth min-samples]
+              :or   {level 1, max-depth 10, min-samples 3}}]
   (if (>= level max-depth)
     (build-leaf samples)
     (let [{:keys [left right] :as res} (select-best-branch samples)
@@ -91,11 +90,8 @@
         :else
         {:threshold (:threshold res)
          :index     (:index res)
-         :left      (apply build-nodes :samples left base-args)
-         :right     (apply build-nodes :samples right base-args)}))))
-
-
-
+         :left      (apply build-tree left base-args)
+         :right     (apply build-tree right base-args)}))))
 
 (defn classify
   [dtree feature]
@@ -118,4 +114,3 @@
                    test-samples))]
     (double (/ (res true)
                (count test-samples)))))
-
