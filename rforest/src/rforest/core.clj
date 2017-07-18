@@ -9,10 +9,11 @@
     (rand-nth samples)))
 
 (defn build-forest
-  [samples & {:keys [tree-num sample-num]
-              :or   {tree-num 10, sample-num 50}}]
+  [samples & {:keys [tree-num sample-num max-depth min-samples]
+              :or   {tree-num 10, sample-num 50, max-depth 10, min-samples 3}}]
   (for [i (range tree-num)]
-    (dc/build-tree (bootstrap-samples samples sample-num))))
+    (dc/build-tree (bootstrap-samples samples sample-num)
+                   :max-depth max-depth :min-samples min-samples)))
 
 (defn classify
   [rforest feature]
