@@ -15,10 +15,13 @@
        (partition 2 1)
        (map #(/ (apply + %) 2))))
 
+(defn- squared [n]
+  (* n n))
+
 (defn gini [samples]
   (let [n-all (count samples)]
     (- 1 (transduce
-           (map (fn [[_ n]] (Math/pow (/ n n-all) 2)))
+           (map (fn [[_ n]] (squared (/ n n-all))))
            + 0 (frequencies (map label samples))))))
 
 (defn split-samples
@@ -64,20 +67,21 @@
     {:info-gain 1.0}
     (feature-index-threshold-pairs samples)))
 
+;(defn build-leaf
+;  [samples]
+;  (->> samples
+;       (map label)
+;       frequencies
+;       (apply max-key second)
+;       first
+;       (hash-map :label)))
 (defn build-leaf
   [samples]
-  (->> samples
-       (map label)
-       frequencies
-       (apply max-key second)
-       first
-       (hash-map :label)))
-
-
+  (->> samples first label (hash-map :label)))
 
 (defn build-tree
   "options - {:level 1 :max-depth 10 :min-samples nil}"
-  [samples option]
+  [samples & [option]]
   (let [{:keys [level max-depth min-samples] :as option}
         (merge {:level 1 :max-depth 10 :min-samples nil} option)]
     (cond
@@ -85,7 +89,7 @@
       (build-leaf samples)
 
       (apply = (map label samples))
-      {:label (label (first samples))} ; FIXME
+      (build-leaf samples)
 
       :else
       (let [{:keys [left right] :as res} (select-best-branch samples)]
@@ -93,17 +97,14 @@
           (or (empty? left) (empty? right))
           (build-leaf samples)
 
-          (< (max (count left) (count right)) min-samples)
+          (and min-samples (< (max (count left) (count right)) min-samples))
           (build-leaf samples)
 
           :else
           {:threshold (:threshold res)
            :index     (:index res)
            :left      (build-tree left (update option :level inc))
-           :right     (build-tree right (update option :level inc))}))
-      )
-    )
-  )
+           :right     (build-tree right (update option :level inc))})))))
 
 (defn classify
   [dtree feature]

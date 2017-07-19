@@ -28,7 +28,7 @@
       128  (count right))))
 
 (deftest build-leaf-test
-  (let [samples (map #(->SimpleSample [] %) [1 2 1 3 2 1])]
+  (let [samples (map #(->SimpleSample [] %) [1 2])]
     (is (= (build-leaf samples) {:label 1}))))
 
 (deftest classify-test
