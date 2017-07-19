@@ -1,6 +1,6 @@
-# dtree
+# ents/dtree
 
-A Clojure library designed to ... well, that part is up to you.
+Decision tree implementation by Clojure.
 
 ## Usage
 

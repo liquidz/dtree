@@ -13,7 +13,7 @@
               :or   {tree-num 10, sample-num 50, max-depth 10, min-samples 3}}]
   (for [i (range tree-num)]
     (dc/build-tree (bootstrap-samples samples sample-num)
-                   :max-depth max-depth :min-samples min-samples)))
+                   {:max-depth max-depth :min-samples min-samples})))
 
 (defn classify
   [rforest feature]

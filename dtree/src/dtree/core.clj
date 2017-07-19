@@ -46,10 +46,10 @@
     (map (fn [[index threshold]]
            (let [[left right] (split-samples samples index threshold)]
              (if (or (empty? left) (empty? right))
-               {:gini 1.0}
+               {:info-gain 1.0}
                {:index     index
                 :threshold threshold
-                :gini      (calc-gini left right)
+                :info-gain (calc-gini left right)
                 :left      left
                 :right     right}))))))
 
@@ -60,8 +60,8 @@
     (fn 
       ([m] m)
       ([best m]
-       (min-key :gini best m)))
-    {:gini 1.0}
+       (min-key :info-gain best m)))
+    {:info-gain 1.0}
     (feature-index-threshold-pairs samples)))
 
 (defn build-leaf
@@ -73,25 +73,37 @@
        first
        (hash-map :label)))
 
+
+
 (defn build-tree
-  [samples & {:keys [level max-depth min-samples]
-              :or   {level 1, max-depth 10, min-samples 3}}]
-  (if (>= level max-depth)
-    (build-leaf samples)
-    (let [{:keys [left right] :as res} (select-best-branch samples)
-          base-args [:level (inc level) :max-depth max-depth :min-samples min-samples]]
-      (cond
-        (or (empty? left) (empty? right))
-        (build-leaf samples)
+  "options - {:level 1 :max-depth 10 :min-samples nil}"
+  [samples option]
+  (let [{:keys [level max-depth min-samples] :as option}
+        (merge {:level 1 :max-depth 10 :min-samples nil} option)]
+    (cond
+      (>= level max-depth)
+      (build-leaf samples)
 
-        (< (max (count left) (count right)) min-samples)
-        (build-leaf samples)
+      (apply = (map label samples))
+      {:label (label (first samples))} ; FIXME
 
-        :else
-        {:threshold (:threshold res)
-         :index     (:index res)
-         :left      (apply build-tree left base-args)
-         :right     (apply build-tree right base-args)}))))
+      :else
+      (let [{:keys [left right] :as res} (select-best-branch samples)]
+        (cond
+          (or (empty? left) (empty? right))
+          (build-leaf samples)
+
+          (< (max (count left) (count right)) min-samples)
+          (build-leaf samples)
+
+          :else
+          {:threshold (:threshold res)
+           :index     (:index res)
+           :left      (build-tree left (update option :level inc))
+           :right     (build-tree right (update option :level inc))}))
+      )
+    )
+  )
 
 (defn classify
   [dtree feature]
