@@ -124,16 +124,15 @@
 (defn classify
   [dtree feature]
   (loop [node dtree]
-    (let [f (some->> node :index (nth feature))]
-      (cond
-        (contains? node :label)
-        (:label node)
+    (cond
+      (contains? node :label)
+      (:label node)
 
-        (< (->> node :index (nth feature)) (:threshold node))
-        (recur (:left node))
+      (< (->> node :index (nth feature)) (:threshold node))
+      (recur (:left node))
 
-        :else
-        (recur (:right node))))))
+      :else
+      (recur (:right node)))))
 
 (defn accuracy
   [dtree test-samples]
