@@ -32,12 +32,12 @@
 
 
 (defn feature-index-threshold-pairs
-  [samples]
+  [samples feature-indexes]
   (mapcat
     (fn [index]
         (map (fn [threshold] [index threshold])
              (thresholds samples index)))
-    (-> samples first features count range)))
+    feature-indexes))
 
 (defn- generate-branch-xform
   [samples]
@@ -57,7 +57,7 @@
                 :right     right}))))))
 
 (defn select-best-branch
-  [samples]
+  [samples feature-indexes]
   (transduce
     (generate-branch-xform samples)
     (fn 
@@ -65,7 +65,7 @@
       ([best m]
        (min-key :info-gain best m)))
     {:info-gain 1.0}
-    (feature-index-threshold-pairs samples)))
+    (feature-index-threshold-pairs samples feature-indexes)))
 
 ;(defn build-leaf
 ;  [samples]
@@ -79,32 +79,47 @@
   [samples]
   (->> samples first label (hash-map :label)))
 
+(def ^:dynamic *max-depth* nil)
+(def ^:dynamic *min-samples* nil)
+(def ^:dynamic *feature-indexes* nil)
+
+(defn- build-tree*
+  [samples level]
+  (cond
+    (>= level *max-depth*)
+    (build-leaf samples)
+
+    (apply = (map label samples))
+    (build-leaf samples)
+
+    :else
+    (let [{:keys [left right] :as res} (select-best-branch samples *feature-indexes*)]
+      (cond
+        (or (empty? left) (empty? right))
+        (build-leaf samples)
+
+        (and *min-samples* (< (max (count left) (count right)) *min-samples*))
+        (build-leaf samples)
+
+        :else
+        {:threshold (:threshold res)
+         :index     (:index res)
+         :left      (build-tree* left (inc level))
+         :right     (build-tree* right (inc level))}))))
+
+
 (defn build-tree
-  "options - {:level 1 :max-depth 10 :min-samples nil}"
-  [samples & [option]]
-  (let [{:keys [level max-depth min-samples] :as option}
-        (merge {:level 1 :max-depth 10 :min-samples nil} option)]
-    (cond
-      (>= level max-depth)
-      (build-leaf samples)
-
-      (apply = (map label samples))
-      (build-leaf samples)
-
-      :else
-      (let [{:keys [left right] :as res} (select-best-branch samples)]
-        (cond
-          (or (empty? left) (empty? right))
-          (build-leaf samples)
-
-          (and min-samples (< (max (count left) (count right)) min-samples))
-          (build-leaf samples)
-
-          :else
-          {:threshold (:threshold res)
-           :index     (:index res)
-           :left      (build-tree left (update option :level inc))
-           :right     (build-tree right (update option :level inc))})))))
+  "
+  If `feature-indexes` is missing, all features are used to train.
+  `min-samples` = nil means no limitation for ...
+  "
+  [samples & {:keys [level max-depth min-samples feature-indexes]
+              :or   {level 1, max-depth 10, min-samples nil}}]
+  (binding [*max-depth*       max-depth
+            *min-samples*     min-samples
+            *feature-indexes* (or feature-indexes
+                                  (range (count (features (first samples)))))]
+    (build-tree* samples level)))
 
 (defn classify
   [dtree feature]

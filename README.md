@@ -4,7 +4,7 @@
 
 
 * [ent/dtree](dtree) - Decision Tree
-* [ent/rforest][rforest] - Random Forest
+* [ent/rforest](rforest) - Random Forest
 
 ## License
 

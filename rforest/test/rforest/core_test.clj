@@ -7,7 +7,7 @@
 
 (deftest random-forest
   (let [samples (dd/samples (iris))
-        rforest (build-forest samples :tree-num 5 :sample-num 50)
+        rforest (build-forest samples :tree-num 5)
         n       20]
     (is (> (accuracy rforest (bootstrap-samples samples n)) 0.9))))
 
